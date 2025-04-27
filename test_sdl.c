@@ -1,18 +1,33 @@
-
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>       
+#include <SDL.h>
+#include <SDL_image.h>
+#include <SDL_ttf.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
+#include <errno.h>
+
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <netdb.h>
+#endif
+
+// Ton ancien code continue ici
+// (C’est-à-dire tout ce que tu avais déjà dans ton sh13.c)
+// Je ne modifie pas ton jeu, seulement la partie réseau pour Windows
+
+// Déclaration des variables globales...
+
+// ...
 
 pthread_t thread_serveur_tcp_id;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 char gbuffer[256];
 char gServerIpAddress[256];
 int gServerPort;
@@ -45,6 +60,8 @@ void *fn_serveur_tcp(void *arg)
         struct sockaddr_in serv_addr, cli_addr;
         int n;
 
+		    errno = 0;
+
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd<0)
         {
@@ -57,9 +74,9 @@ void *fn_serveur_tcp(void *arg)
         serv_addr.sin_family = AF_INET;
         serv_addr.sin_addr.s_addr = INADDR_ANY;
         serv_addr.sin_port = htons(portno);
-       if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+        if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         {
-                printf("bind error\n");
+				(void)fprintf(stderr, "bind error : %s.\n", strerror(errno));	//modification pour afficher le type d'erreur
                 exit(1);
         }
 
@@ -75,15 +92,17 @@ void *fn_serveur_tcp(void *arg)
                 }
 
                 bzero(gbuffer,256);
-                n = read(newsockfd,gbuffer,255);
+                n = read(newsockfd,gbuffer,256);
                 if (n < 0)
                 {
                         printf("read error\n");
                         exit(1);
                 }
-                //printf("%s",gbuffer);
+                // printf("%s",gbuffer);
 
+                // pthread_mutex_lock( &mutex );
                 synchro=1;
+                // pthread_mutex_unlock( &mutex );
 
                 while (synchro);
 
@@ -122,9 +141,104 @@ void sendMessageToServer(char *ipAddress, int portno, char *mess)
     close(sockfd);
 }
 
-int main(int argc, char ** argv)
+/* Fonction pour le thread serveur tcp
+static void * fn_serveur_tcp (void * p_data)
 {
-	int ret;
+   while (1)
+   {
+	printf("Je suis le thread serveur\n");
+	sleep(1);
+   }
+
+   return NULL;
+}
+*/
+
+void initObjets(){
+  for(int i = 0; i < 8; i++) tableCartes[gId][i] = 0;
+  for(int i = 0; i < 3; i++){
+    switch (b[i])
+    {
+      case 0: // Sebastian Moran
+        tableCartes[gId][7]++;
+        tableCartes[gId][2]++;
+        break;
+      case 1: // Irene Adler
+        tableCartes[gId][7]++;
+        tableCartes[gId][1]++;
+        tableCartes[gId][5]++;
+        break;
+      case 2: // Inspector Lestrade
+        tableCartes[gId][3]++;
+        tableCartes[gId][6]++;
+        tableCartes[gId][4]++;
+        break;
+      case 3: // Inspector Gregson
+        tableCartes[gId][3]++;
+        tableCartes[gId][2]++;
+        tableCartes[gId][4]++;
+        break;
+      case 4: // Inspector Baynes
+        tableCartes[gId][3]++;
+        tableCartes[gId][1]++;
+        break;
+      case 5: // Inspector Bradstreet
+        tableCartes[gId][3]++;
+        tableCartes[gId][2]++;
+        break;
+      case 6: // Inspector Hopkins
+        tableCartes[gId][3]++;
+        tableCartes[gId][0]++;
+        tableCartes[gId][6]++;
+        break;
+      case 7: // Sherlock Holmes
+        tableCartes[gId][0]++;
+        tableCartes[gId][1]++;
+        tableCartes[gId][2]++;
+        break;
+      case 8: // John Watson
+        tableCartes[gId][0]++;
+        tableCartes[gId][6]++;
+        tableCartes[gId][2]++;
+        break;
+      case 9: // Mycroft Holmes
+        tableCartes[gId][0]++;
+        tableCartes[gId][1]++;
+        tableCartes[gId][4]++;
+        break;
+      case 10: // Mrs. Hudson
+        tableCartes[gId][0]++;
+        tableCartes[gId][5]++;
+        break;
+      case 11: // Mary Morstan
+        tableCartes[gId][4]++;
+        tableCartes[gId][5]++;
+        break;
+      case 12: // James Moriarty
+        tableCartes[gId][7]++;
+        tableCartes[gId][1]++;
+        break;
+    }
+  }
+
+}
+
+
+// Début de ton main()
+int main(int argc, char **argv)
+{
+#ifdef _WIN32
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2,2), &wsa) != 0) {
+        printf("WSAStartup failed. Error Code : %d\n", WSAGetLastError());
+        return 1;
+    }
+#endif
+
+    // Ton code principal continue ici (SDL_Init, fenêtre, jeu, etc.)
+
+    // ...
+    int ret;
 	int i,j;
 
     int quit = 0;
@@ -148,10 +262,10 @@ int main(int argc, char ** argv)
 
     SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
- 
+
     SDL_Window * window = SDL_CreateWindow("SDL2 SH13",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, 0);
- 
+
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
 
     SDL_Surface *deck[13],*objet[8],*gobutton,*connectbutton;
@@ -215,33 +329,32 @@ int main(int argc, char ** argv)
     texture_gobutton = SDL_CreateTextureFromSurface(renderer, gobutton);
     texture_connectbutton = SDL_CreateTextureFromSurface(renderer, connectbutton);
 
-    TTF_Font* Sans = TTF_OpenFont("sans.ttf", 15); 
+    TTF_Font* Sans = TTF_OpenFont("sans.ttf", 15);
     printf("Sans=%p\n",Sans);
 
-   /* Creation du thread serveur tcp. */
-   printf ("Creation du thread serveur tcp !\n");
-   synchro=0;
-   ret = pthread_create ( & thread_serveur_tcp_id, NULL, fn_serveur_tcp, NULL);
+   	/* Creation du thread serveur tcp. */
+   	printf ("Creation du thread serveur tcp !\n");
+   	synchro=0;
+    ret = pthread_create ( & thread_serveur_tcp_id, NULL, fn_serveur_tcp, NULL);
 
     while (!quit)
     {
 	if (SDL_PollEvent(&event))
 	{
-		//printf("un event\n");
+		// printf("un event\n");
         	switch (event.type)
         	{
-            		case SDL_QUIT:
-                		quit = 1;
-                		break;
+            case SDL_QUIT:
+                quit = 1;
+                break;
 			case  SDL_MOUSEBUTTONDOWN:
 				SDL_GetMouseState( &mx, &my );
-				//printf("mx=%d my=%d\n",mx,my);
+				// printf("mx=%d my=%d\n",mx,my);
 				if ((mx<200) && (my<50) && (connectEnabled==1))
 				{
 					sprintf(sendBuffer,"C %s %d %s",gClientIpAddress,gClientPort,gName);
 
-					// RAJOUTER DU CODE ICI
-					sendMessageToServer(gServerIpAddress,gServerPort,sendBuffer);
+					sendMessageToServer(gServerIpAddress,gServerPort,sendBuffer); // RAJOUTER CODE ICI
 
 					connectEnabled=0;
 				}
@@ -271,33 +384,19 @@ int main(int argc, char ** argv)
 					printf("go! joueur=%d objet=%d guilt=%d\n",joueurSel, objetSel, guiltSel);
 					if (guiltSel!=-1)
 					{
-						sprintf(sendBuffer,"G %d %d",gId, guiltSel);
-
-					// RAJOUTER DU CODE ICI
-					sendMessageToServer(gServerIpAddress, gServerPort, sendBuffer);
-					goEnabled = 0; // Désactiver le bouton GO après avoir joué
-
+            sprintf(sendBuffer,"G %d %d",gId, guiltSel);
+  					sendMessageToServer(gServerIpAddress,gServerPort,sendBuffer);
 
 					}
 					else if ((objetSel!=-1) && (joueurSel==-1))
 					{
-						sprintf(sendBuffer,"O %d %d",gId, objetSel);
-
-					// RAJOUTER DU CODE ICI
-					sendMessageToServer(gServerIpAddress, gServerPort, sendBuffer);
-					goEnabled = 0;
-
-
+            sprintf(sendBuffer,"O %d %d",gId, objetSel);
+						sendMessageToServer(gServerIpAddress,gServerPort,sendBuffer);
 					}
 					else if ((objetSel!=-1) && (joueurSel!=-1))
 					{
-						sprintf(sendBuffer,"S %d %d %d",gId, joueurSel,objetSel);
-
-					// RAJOUTER DU CODE ICI
-					sendMessageToServer(gServerIpAddress, gServerPort, sendBuffer);
-					goEnabled = 0;
-
-
+            sprintf(sendBuffer,"S %d %d %d",gId, joueurSel,objetSel);
+            sendMessageToServer(gServerIpAddress,gServerPort,sendBuffer);
 					}
 				}
 				else
@@ -313,75 +412,53 @@ int main(int argc, char ** argv)
         	}
 	}
 
-        if (synchro==1)
-        {
-                printf("consomme |%s|\n",gbuffer);
+  if (synchro==1)
+  {
+                // pthread_mutex_lock( &mutex );
+    // printf("consomme |%s|\n",gbuffer);
+    int joueurCourant, player, object, value;
+    char nomDuGagant[256]; //Fin de partie
+
 		switch (gbuffer[0])
 		{
 			// Message 'I' : le joueur recoit son Id
 			case 'I':
-				// RAJOUTER DU CODE ICI
-				sscanf(gbuffer, "I %d", &gId);
-				printf("Mon ID est %d\n", gId);
-
-
+				sscanf(gbuffer + 2, "%d", &gId);
 				break;
 			// Message 'L' : le joueur recoit la liste des joueurs
 			case 'L':
-				// RAJOUTER DU CODE ICI
-				sscanf(gbuffer, "L %s %s %s %s", gNames[0], gNames[1], gNames[2], gNames[3]);
-				printf("Liste joueurs : %s %s %s %s\n", gNames[0], gNames[1], gNames[2], gNames[3]);
-
-
+				sscanf((gbuffer + 2), "%s %s %s %s", gNames[0], gNames[1], gNames[2], gNames[3]);
 				break;
 			// Message 'D' : le joueur recoit ses trois cartes
 			case 'D':
-				// RAJOUTER DU CODE ICI
-				sscanf(gbuffer, "D %d %d %d", &b[0], &b[1], &b[2]);
-				printf("Mes cartes : %d %d %d\n", b[0], b[1], b[2]);
-
-
+        sscanf((gbuffer + 2), "%d %d %d", &b[0], &b[1], &b[2]);
+        initObjets();
 				break;
 			// Message 'M' : le joueur recoit le n° du joueur courant
 			// Cela permet d'affecter goEnabled pour autoriser l'affichage du bouton go
 			case 'M':
-				// RAJOUTER DU CODE ICI
-				int joueur;
-				sscanf(gbuffer, "M %d", &joueur);
-				printf("Joueur courant = %d\n", joueur);
-				if (joueur == gId)
-   				 goEnabled = 1;
-				else
-   				 goEnabled = 0;
-
-
+        		sscanf(gbuffer + 2,"%d",&joueurCourant);
+        		if (joueurCourant == gId){
+          			goEnabled=1;
+        		}
+				else {
+				goEnabled=0;
+				}
 				break;
 			// Message 'V' : le joueur recoit une valeur de tableCartes
 			case 'V':
-				// RAJOUTER DU CODE ICI
-				int i, j, val;
-				sscanf(gbuffer, "V %d %d %d", &i, &j, &val);
-				tableCartes[i][j] = val;
-
-
+				sscanf(gbuffer+2,"%d %d %d",&player,&object,&value);
+				if (tableCartes[player][object] == -1){
+					tableCartes[player][object] = value;
+				}
 				break;
-			case 'w':
-			int winner;
-				sscanf(gbuffer, "W %d", &winner);
-				printf("Victoire du joueur %d !\n", winner);
-				exit(0); // Quitter proprement
-			break;
-
 			case 'E':
-			int loser;
-			sscanf(gbuffer, "E %d", &loser);
-			printf("Erreur d'accusation du joueur %d !\n", loser);
-			// Continuer sans quitter
+				sscanf(gbuffer + 2, "%s", nomDuGagant);
+				printf("%s à gagné\n", nomDuGagant);
 			break;
-
-				
 		}
 		synchro=0;
+                // pthread_mutex_unlock( &mutex );
         }
 
         SDL_Rect dstrect_grille = { 512-250, 10, 500, 350 };
@@ -389,29 +466,29 @@ int main(int argc, char ** argv)
         SDL_Rect dstrect_image1 = { 0, 340, 250, 330/2 };
 
 	SDL_SetRenderDrawColor(renderer, 255, 230, 230, 230);
-	SDL_Rect rect = {0, 0, 1024, 768}; 
+	SDL_Rect rect = {0, 0, 1024, 768};
 	SDL_RenderFillRect(renderer, &rect);
 
 	if (joueurSel!=-1)
 	{
 		SDL_SetRenderDrawColor(renderer, 255, 180, 180, 255);
-		SDL_Rect rect1 = {0, 90+joueurSel*60, 200 , 60}; 
+		SDL_Rect rect1 = {0, 90+joueurSel*60, 200 , 60};
 		SDL_RenderFillRect(renderer, &rect1);
-	}	
+	}
 
 	if (objetSel!=-1)
 	{
 		SDL_SetRenderDrawColor(renderer, 180, 255, 180, 255);
-		SDL_Rect rect1 = {200+objetSel*60, 0, 60 , 90}; 
+		SDL_Rect rect1 = {200+objetSel*60, 0, 60 , 90};
 		SDL_RenderFillRect(renderer, &rect1);
-	}	
+	}
 
 	if (guiltSel!=-1)
 	{
 		SDL_SetRenderDrawColor(renderer, 180, 180, 255, 255);
-		SDL_Rect rect1 = {100, 350+guiltSel*30, 150 , 30}; 
+		SDL_Rect rect1 = {100, 350+guiltSel*30, 150 , 30};
 		SDL_RenderFillRect(renderer, &rect1);
-	}	
+	}
 
 	{
         SDL_Rect dstrect_pipe = { 210, 10, 40, 40 };
@@ -439,7 +516,7 @@ int main(int argc, char ** argv)
                 SDL_Texture* Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
 
                 SDL_Rect Message_rect; //create a rect
-                Message_rect.x = 230+i*60;  //controls the rect's x coordinate 
+                Message_rect.x = 230+i*60;  //controls the rect's x coordinate
                 Message_rect.y = 50; // controls the rect's y coordinte
                 Message_rect.w = surfaceMessage->w; // controls the width of the rect
                 Message_rect.h = surfaceMessage->h; // controls the height of the rect
@@ -526,7 +603,7 @@ int main(int argc, char ** argv)
         SDL_Rect dstrect_carnet = { 60, 410, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[4], NULL, &dstrect_carnet);
 	}
-	// Inspector Gregson 
+	// Inspector Gregson
 	{
         SDL_Rect dstrect_couronne = { 0, 440, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[3], NULL, &dstrect_couronne);
@@ -539,7 +616,7 @@ int main(int argc, char ** argv)
         SDL_Rect dstrect_carnet = { 60, 440, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[4], NULL, &dstrect_carnet);
 	}
-	// Inspector Baynes 
+	// Inspector Baynes
 	{
         SDL_Rect dstrect_couronne = { 0, 470, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[3], NULL, &dstrect_couronne);
@@ -557,7 +634,7 @@ int main(int argc, char ** argv)
         SDL_Rect dstrect_poing = { 30, 500, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[2], NULL, &dstrect_poing);
 	}
-	// Inspector Hopkins 
+	// Inspector Hopkins
 	{
         SDL_Rect dstrect_couronne = { 0, 530, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[3], NULL, &dstrect_couronne);
@@ -570,7 +647,7 @@ int main(int argc, char ** argv)
         SDL_Rect dstrect_oeil = { 60, 530, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[6], NULL, &dstrect_oeil);
 	}
-	// Sherlock Holmes 
+	// Sherlock Holmes
 	{
         SDL_Rect dstrect_pipe = { 0, 560, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[0], NULL, &dstrect_pipe);
@@ -583,7 +660,7 @@ int main(int argc, char ** argv)
         SDL_Rect dstrect_poing = { 60, 560, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[2], NULL, &dstrect_poing);
 	}
-	// John Watson 
+	// John Watson
 	{
         SDL_Rect dstrect_pipe = { 0, 590, 30, 30 };
         SDL_RenderCopy(renderer, texture_objet[0], NULL, &dstrect_pipe);
@@ -711,7 +788,7 @@ int main(int argc, char ** argv)
 		SDL_Texture* Message = SDL_CreateTextureFromSurface(renderer, surfaceMessage);
 
 		SDL_Rect Message_rect; //create a rect
-		Message_rect.x = 10;  //controls the rect's x coordinate 
+		Message_rect.x = 10;  //controls the rect's x coordinate
 		Message_rect.y = 110+i*60; // controls the rect's y coordinte
 		Message_rect.w = surfaceMessage->w; // controls the width of the rect
 		Message_rect.h = surfaceMessage->h; // controls the height of the rect
@@ -723,15 +800,18 @@ int main(int argc, char ** argv)
 
         SDL_RenderPresent(renderer);
     }
- 
+
     SDL_DestroyTexture(texture_deck[0]);
     SDL_DestroyTexture(texture_deck[1]);
     SDL_FreeSurface(deck[0]);
     SDL_FreeSurface(deck[1]);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
- 
+
     SDL_Quit();
- 
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
     return 0;
 }
